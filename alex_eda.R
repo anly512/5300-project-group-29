@@ -94,6 +94,8 @@ tourney_stats <- upset_winner_stats %>%
             by = c(colnames(results), "victor_seed", "loser_seed")) %>%
   left_join(season_summaries,
             by = "season")
+
+tourney_stats %>% write_csv("./data/regular_season_stats_of_upset_teams_2007_2019.csv")
 rm(upset_winner_stats, upset_loser_stats, upsets, test)
 
 # Plot average regular season points of winners and losers of upsets by season
