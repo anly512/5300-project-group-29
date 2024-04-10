@@ -93,7 +93,7 @@ tourney_all_stats <- winner_stats %>%
             by = c(colnames(results), "victor_seed", "loser_seed")) %>%
   left_join(season_summaries,
             by = "season")
-tourney_stats %>% write_csv("./data/regular_season_stats_of_all_tournament_team_matchups_2007_2019.csv")
+tourney_all_stats %>% write_csv("./data/regular_season_stats_of_all_tournament_team_matchups_2007_2019.csv")
 rm(winner_stats, loser_stats, team_summaries_merge)
 
 ### UPSET ANALYSIS ###
