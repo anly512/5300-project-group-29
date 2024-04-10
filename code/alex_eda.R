@@ -155,7 +155,7 @@ tourney_stats %>%
   scale_y_continuous(expand = c(0,0)) +
   labs(x = "Matchup",
        y = "Average Regular Season Score Differential \n(losing team average - winning team average)",
-       title = paste0("Most Surprising Upsets by Scoring (2007-2019)"),
+       title = paste0("Top 10 Most Surprising Upsets by Scoring (2007-2019)"),
        subtitle = paste0("Losing Team versus Winning Team Regular Season Average Points Scored")) +
   theme_bw() +
   theme(axis.text.x = element_text(size = 10),
