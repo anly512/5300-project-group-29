@@ -111,10 +111,13 @@ tourney_stats %>%
   geom_line() +
   labs(x = "Season", 
        y = "Average Regular Season Point Total",
-       title = "Average Regular Season Point Totals by \nUpset Victors and Losers (2007-2019)",
+       title = "Average Regular Season Point Totals by Upset Victors and Losers (2007-2019)",
        color = element_blank()) +
   scale_x_continuous(breaks = 2007:2019) +
   theme_bw()
+ggsave("./plots/EDA/upset_score_by_season.png",
+       height = 8,
+       width = 16)
 
 # Plot average regular season points of winners and losers of upsets by seed
 tourney_stats %>%
@@ -131,20 +134,41 @@ tourney_stats %>%
   geom_point() +
   labs(x = "Victor Seed", 
        y = "Average Regular Season Point Total",
-       title = "Average Regular Season Point Totals by\nUpset Victors (2007-2019)",
+       title = "Average Regular Season Point Totals by Upset Victors (2007-2019)",
        size = "Number of Upsets") +
   scale_y_continuous(expand = c(0,1)) +
   theme_bw()
+ggsave("./plots/EDA/upset_score_by_seed.png",
+       height = 8,
+       width = 16)
 
-# 
-
-
-
-
-
-
-
-
-
-
-
+# Plot ten most surprising upsets by regular season scoring
+tourney_stats %>%
+  mutate(avg_score_diff = loser_avg_score - victor_avg_score) %>%
+  select(season, victor, loser, avg_score_diff, victor_seed, loser_seed) %>%
+  arrange(-avg_score_diff) %>%
+  slice_head(n = 10) %>%
+  mutate(plot_string = 
+           str_glue("{season} \n{victor} ({victor_seed})\n over \n{loser} ({loser_seed})")) %>%
+  ggplot(aes(x = reorder(plot_string, -avg_score_diff), y = avg_score_diff, fill = avg_score_diff)) +
+  geom_bar(stat = "identity") +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(x = "Matchup",
+       y = "Average Regular Season Score Differential \n(losing team average - winning team average)",
+       title = paste0("Most Surprising Upsets by Scoring (2007-2019)"),
+       subtitle = paste0("Losing Team versus Winning Team Regular Season Average Points Scored")) +
+  theme_bw() +
+  theme(axis.text.x = element_text(size = 10),
+        legend.position = "none")
+ggsave("./plots/EDA/top10_surprising_upsets.png",
+       height = 8,
+       width = 16)
+  
+  
+  
+  
+  
+  
+  
+  
+  
