@@ -66,6 +66,38 @@ results <- results %>%
   mutate(upset = 
            ifelse(victor == name_t1 & seed_t1 > seed_t2 | victor == name_t2 & seed_t2 > seed_t1, 1, 0))
 
+# Create csv with summary stats of individual teams and seasons
+# Merge with summary stats to compare
+team_summaries_merge <- results %>%
+  mutate(victor_seed = 
+           ifelse(victor == name_t1, seed_t1, seed_t2)) %>%
+  mutate(loser_seed =
+           ifelse(victor == name_t1, seed_t2, seed_t1))
+
+winner_stats <- team_summaries %>%
+  rename_with(~ paste0("victor_", .x)) %>%
+  rename(victor = victor_team_name,
+         season = victor_season) %>%
+  right_join(team_summaries_merge,
+             by = c("season", "victor"))
+
+loser_stats <- team_summaries %>%
+  rename_with(~ paste0("loser_", .x)) %>%
+  rename(loser = loser_team_name,
+         season = loser_season) %>%
+  right_join(team_summaries_merge,
+             by = c("season", "loser"))
+
+tourney_all_stats <- winner_stats %>%
+  full_join(loser_stats,
+            by = c(colnames(results), "victor_seed", "loser_seed")) %>%
+  left_join(season_summaries,
+            by = "season")
+tourney_stats %>% write_csv("./data/regular_season_stats_of_all_tournament_team_matchups_2007_2019.csv")
+rm(winner_stats, loser_stats, team_summaries_merge)
+
+### UPSET ANALYSIS ###
+
 # Subset to results with upsets
 upsets <- results %>%
   filter(upset == 1) %>%
@@ -95,8 +127,8 @@ tourney_stats <- upset_winner_stats %>%
   left_join(season_summaries,
             by = "season")
 
-tourney_stats %>% write_csv("./data/regular_season_stats_of_upset_teams_2007_2019.csv")
-rm(upset_winner_stats, upset_loser_stats, upsets, test)
+#tourney_stats %>% write_csv("./data/regular_season_stats_of_upset_teams_2007_2019.csv")
+rm(upset_winner_stats, upset_loser_stats, upsets)
 
 # Plot average regular season points of winners and losers of upsets by season
 tourney_stats %>%
@@ -163,7 +195,6 @@ tourney_stats %>%
 ggsave("./plots/EDA/top10_surprising_upsets.png",
        height = 8,
        width = 16)
-  
   
   
   
