@@ -1,0 +1,45 @@
+First join some dataset together
+
+```{r}
+library(readr)
+library(tidyverse)
+
+heat_check <- read_csv("data/heat_check_tournament_index.csv")
+big_dance <- read_csv("data/Big_Dance_CSV.csv")
+kenpom_data <- read_csv("data/kenpom_tournament_clean.csv")
+tournament_matchups <- read_csv("data/tournament_matchups.csv")
+
+# Inspect the data
+head(heat_check)
+head(big_dance)
+head(kenpom_data)
+head(tournament_matchups)
+```
+
+
+```{r}
+heat_check <- heat_check %>% rename(Season = YEAR)
+big_dance <- big_dance %>% rename(Season = Year)
+names(big_dance) <- str_replace(names(big_dance), "\\...\\d+$", "")
+tournament_matchups <- tournament_matchups %>% rename(Season = YEAR)
+kenpom_data <- kenpom_data %>%
+  select(-1)
+```
+
+```{r}
+ggplot(heat_check, aes(x = PATH)) + geom_histogram(bins = 30) + ggtitle("Distribution of PATH")
+ggplot(heat_check, aes(x = POWER)) + geom_histogram(bins = 30) + ggtitle("Distribution of POWER")
+
+# Boxplot for WINS by SEED
+ggplot(heat_check, aes(x = as.factor(SEED), y = WINS)) + geom_boxplot() + ggtitle("WINS by SEED")
+
+# Correlation matrix and heatmap
+correlations <- cor(heat_check[,c("PATH", "POWER", "SEED", "WINS", "ROUND")])
+heatmap(as.matrix(correlations), main = "Correlation Matrix", col = topo.colors(10), scale = "column")
+
+# Scatter plot for PATH vs WINS
+ggplot(heat_check, aes(x = PATH, y = WINS)) + geom_point() + geom_smooth(method = lm) + ggtitle("PATH vs WINS")
+```
+
+
+
