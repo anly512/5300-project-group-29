@@ -1,13 +1,14 @@
+
 First join some dataset together
 
 ```{r}
 library(readr)
 library(tidyverse)
 
-heat_check <- read_csv("data/heat_check_tournament_index.csv")
-big_dance <- read_csv("data/Big_Dance_CSV.csv")
-kenpom_data <- read_csv("data/kenpom_tournament_clean.csv")
-tournament_matchups <- read_csv("data/tournament_matchups.csv")
+heat_check <- read_csv("../../data/heat_check_tournament_index.csv")
+big_dance <- read_csv("../../data/Big_Dance_CSV.csv")
+kenpom_data <- read_csv("../../data/kenpom_tournament_clean.csv")
+tournament_matchups <- read_csv("../../data/tournament_matchups.csv")
 
 # Inspect the data
 head(heat_check)
@@ -27,19 +28,20 @@ kenpom_data <- kenpom_data %>%
 ```
 
 ```{r}
-ggplot(heat_check, aes(x = PATH)) + geom_histogram(bins = 30) + ggtitle("Distribution of PATH")
-ggplot(heat_check, aes(x = POWER)) + geom_histogram(bins = 30) + ggtitle("Distribution of POWER")
+seed_expectations <- c(`1`=4, `2`=4, `3`=3, `4`=3, `5`=2, `6`=2, `7`=2, `8`=2, `9`=1, `10`=1, `11`=1, `12`=1, `13`=0, `14`=0, `15`=0, `16`=0)
 
-# Boxplot for WINS by SEED
-ggplot(heat_check, aes(x = as.factor(SEED), y = WINS)) + geom_boxplot() + ggtitle("WINS by SEED")
+# Analyze upsets based on PATH difficulty
+heat_check <- heat_check %>%
+  mutate(Upset = ROUND > seed_expectations[as.character(SEED)]) %>%
+  mutate(Upset = ifelse(Upset, "Upset", "No Upset"))
 
-# Correlation matrix and heatmap
-correlations <- cor(heat_check[,c("PATH", "POWER", "SEED", "WINS", "ROUND")])
-heatmap(as.matrix(correlations), main = "Correlation Matrix", col = topo.colors(10), scale = "column")
-
-# Scatter plot for PATH vs WINS
-ggplot(heat_check, aes(x = PATH, y = WINS)) + geom_point() + geom_smooth(method = lm) + ggtitle("PATH vs WINS")
+# Visualizing the distribution of PATH difficulty for Upsets
+ggplot(heat_check, aes(x=Upset, y=PATH, fill=Upset)) +
+  geom_violin(trim=FALSE) +
+  labs(title="Distribution of Path Difficulty Based on Upset Status", x="Upset Status", y="Path Difficulty") +
+  theme_minimal()
 ```
+
 
 
 
