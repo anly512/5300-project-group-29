@@ -1,0 +1,95 @@
+---
+title: "Untitled"
+format: html
+embed-resources: true
+---
+
+```{python}
+
+import pandas as pd
+
+# Load the data files
+regular_season_stats_file = "../../data/regular_season_stats_of_all_tournament_team_matchups_2007_2019.csv"
+tournament_index_file = "../../data/heat_check_tournament_index.csv"
+
+# Read the datasets
+regular_season_stats = pd.read_csv(regular_season_stats_file)
+tournament_index = pd.read_csv(tournament_index_file)
+
+# Display the first few rows of each dataset
+regular_season_stats.head(), tournament_index.head()
+```
+
+
+```{python}
+
+# Check the unique team names and years in both datasets to understand the merging possibility
+unique_teams_regular = set(regular_season_stats['victor'].unique())
+unique_teams_tournament = set(tournament_index['TEAM'].unique())
+
+# Display unique team names in both datasets
+unique_teams_regular, unique_teams_tournament
+```
+
+
+```{python}
+def standardize_team_names(name):
+    # Common suffixes and variations that need to be standardized
+    suffixes = [' State', ' St', 'ate', ' University', 'College', ' of']
+    for suffix in suffixes:
+        name = name.replace(suffix, '')
+    return name.strip()
+
+# Apply standardization function to team names in both datasets
+regular_season_stats['victor'] = regular_season_stats['victor'].apply(standardize_team_names)
+tournament_index['TEAM'] = tournament_index['TEAM'].apply(standardize_team_names)
+
+# Check the unique team names again after standardization
+unique_teams_regular_post = set(regular_season_stats['victor'].unique())
+unique_teams_tournament_post = set(tournament_index['TEAM'].unique())
+
+unique_teams_regular_post, unique_teams_tournament_post
+
+
+```
+
+
+```{python}
+# Check the year range in both datasets
+regular_season_years = regular_season_stats['season'].unique()
+tournament_index_years = tournament_index['YEAR'].unique()
+
+regular_season_years, tournament_index_years
+
+
+# Filter datasets for overlapping years
+regular_season_stats_filtered = regular_season_stats[regular_season_stats['season'].isin(tournament_index_years)]
+tournament_index_filtered = tournament_index[tournament_index['YEAR'].isin(regular_season_years)]
+
+# Merge datasets on team names and years
+merged_data = pd.merge(regular_season_stats_filtered, tournament_index_filtered, 
+                       left_on=['victor', 'season'], right_on=['TEAM', 'YEAR'], how='inner')
+
+# Display the merged data to ensure it looks correct
+merged_data.head()
+```
+
+
+```{python}
+
+
+import numpy as np
+
+# Simulating the loser seed (for demonstration purposes, real analysis requires actual data)
+np.random.seed(42)
+merged_data['loser_seed'] = np.random.randint(1, 17, size=len(merged_data))
+
+# Define bad losses as where the seed difference between the victor and loser is 5 or more
+merged_data['is_bad_loss'] = (merged_data['SEED'] - merged_data['loser_seed']).abs() >= 5
+
+# Visualization: Count of bad losses for upset and non-upset games
+bad_losses_count = merged_data.groupby('is_bad_loss').size()
+
+bad_losses_count
+```
+
