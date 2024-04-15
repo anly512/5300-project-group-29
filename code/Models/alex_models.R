@@ -100,6 +100,24 @@ print(paste("Training Accuracy",logit_train_acc))
 print(paste("Validation Accuracy",logit_val_acc))
 print(paste("Testing Accuracy",logit_test_acc))
 
+# Nicer plot of ROC
+roc_df <- coords(logit_roc, 'best', transpose = T)
+roc_df <- data.frame(threshold = c(0, 0.5, 1),
+                     specificity = nnet_roc$specificities,
+                     sensitivity = nnet_roc$sensitivities)
+roc_df
+ggplot(roc_df, aes(x = 1 - specificity, y = sensitivity)) +
+  geom_line() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "red") +  # Add diagonal line for reference
+  labs(title = "Logistic Regression ROC Curve", 
+       x = "False Positive Rate (1 - Specificity)",
+       y = "True Positive Rate (Sensitivity)",
+       caption = "Data source: hoopR") +
+  theme_bw()
+ggsave("../../plots/Models/ROC_Curve_logit.png",
+       height = 8,
+       width = 16)
+
 ### Neural Networks ###
 # Non predictors (these change since nnet wants a numeric output in the formula instead of character)
 nonpreds <- c("seed_t1",
@@ -151,8 +169,7 @@ nnet_roc <- roc(nnet_pred$pred_class, logit_pred$pred_class, levels = c(0,1))
 nnet_auc <- auc(nnet_pred$pred_class, logit_pred$pred_class, levels = c(0,1))
 plot.roc(nnet_roc)
 
-# Nice plot of ROC
-# Interpolate ROC
+# Nicer plot of ROC
 roc_df <- coords(nnet_roc, 'best', transpose = T)
 roc_df <- data.frame(threshold = c(0, 0.5, 1),
                      specificity = nnet_roc$specificities,
