@@ -1,7 +1,7 @@
 
-First join some dataset together
+# Data Prep
 
-```{r}
+```{r, show_col_types = FALSE}
 library(readr)
 library(tidyverse)
 
@@ -9,6 +9,7 @@ heat_check <- read_csv("../../data/heat_check_tournament_index.csv")
 big_dance <- read_csv("../../data/Big_Dance_CSV.csv")
 kenpom_data <- read_csv("../../data/kenpom_tournament_clean.csv")
 tournament_matchups <- read_csv("../../data/tournament_matchups.csv")
+upsetdata <- read_csv("../../data/regular_season_stats_of_all_tournament_team_matchups_2007_2019.csv")
 
 # Inspect the data
 head(heat_check)
@@ -16,7 +17,7 @@ head(big_dance)
 head(kenpom_data)
 head(tournament_matchups)
 ```
-
+# Data Wrangling
 
 ```{r}
 heat_check <- heat_check %>% rename(Season = YEAR)
@@ -26,6 +27,50 @@ tournament_matchups <- tournament_matchups %>% rename(Season = YEAR)
 kenpom_data <- kenpom_data %>%
   select(-1)
 ```
+
+# Some EDA
+
+```{r}
+glimpse(heat_check)
+summary(heat_check)
+```
+
+```{r}
+# Histogram of PATH difficulty
+ggplot(heat_check, aes(x=PATH)) +
+  geom_histogram(binwidth=1, fill="blue", color="white") +
+  labs(title="Histogram of PATH Difficulty", x="PATH Difficulty", y="Count")
+
+# Boxplot of POWER by SEED
+ggplot(heat_check, aes(x=factor(SEED), y=POWER)) +
+  geom_boxplot() +
+  labs(title="Boxplot of Team Power by Seed", x="Seed", y="Power")
+
+```
+```{r}
+# Correlation matrix of selected variables
+selected_variables <- heat_check %>% select(POWER, PATH, WINS, `POOL VALUE`)
+correlation_matrix <- cor(selected_variables, use="complete.obs")  # Handling missing values
+print(correlation_matrix)
+
+# Visualizing the correlation matrix
+library(corrplot)
+corrplot(correlation_matrix, method="circle")
+
+```
+```{r}
+# Scatter plot of POWER vs. PATH
+ggplot(heat_check, aes(x=POWER, y=PATH)) +
+  geom_point(aes(color=factor(SEED)), alpha=0.6) +
+  labs(title="Scatter Plot of POWER vs. PATH by SEED", x="POWER", y="PATH")+
+  geom_smooth(method="lm")
+
+```
+
+
+
+
+
 
 ```{r}
 seed_expectations <- c(
@@ -65,52 +110,35 @@ ggplot(heat_check, aes(x=Upset, y=PATH, fill=Upset)) +
   theme_minimal()
 ```
 
-
 ```{r}
 library(dplyr)
-library(caret)
-library(e1071)
+library(e1071)  # Support for SVM
+library(caret)  # For data partitioning and preprocessing
 
-# Assuming the dataset 'heat_check' is already loaded
-# Clean and prepare the data
+
+# Check initial data structure
+str(heat_check)
+
+# Convert 'Upset' to a factor with the correct levels
+
+
+# Handling missing values
+heat_check <- na.omit(heat_check)  # Remove rows with any NAs
+
+# Re-check the structure and balance of 'Upset'
+table(heat_check$Upset)
+
+# Ensure there's a sufficient number of instances for each class
+if(any(table(heat_check$Upset) < 10)) {
+  stop("Not enough data points for each class in 'Upset'. Consider data collection or augmentation.")
+}
+
+# Select relevant features and the target
 features <- heat_check %>%
-  select(SEED, PATH, POWER, `POWER-PATH`, WINS, Upset) %>%
-  na.omit()  # Remove rows with NA values
-
-# Convert 'Upset' to a factor
-features$Upset <- as.factor(features$Upset)
-
-# Split the data into training and testing sets
-set.seed(123)  # for reproducibility
-training_indices <- createDataPartition(features$Upset, p=0.8, list=FALSE)
-training_data <- features[training_indices, ]
-testing_data <- features[-training_indices, ]
-
+  select(SEED, PATH, POWER, `POWER-PATH`, WINS, Upset)
 
 ```
 
-
-```{r}
-# Training the SVM model
-svm_model <- svm(Upset ~ ., data=training_data, type='C-classification', kernel='radial')
-
-# Print a summary to check model details
-summary(svm_model)
-
-```
-
-```{r}
-# Making predictions on the testing dataset
-predictions <- predict(svm_model, testing_data)
-
-# Creating a confusion matrix to evaluate the model
-confusionMatrix <- table(Predicted=predictions, Actual=testing_data$Upset)
-
-# Calculate accuracy
-accuracy <- sum(diag(confusionMatrix)) / sum(confusionMatrix)
-print(paste("Accuracy: ", accuracy))
-
-```
 
 
 
