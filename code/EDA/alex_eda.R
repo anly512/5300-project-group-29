@@ -4,7 +4,7 @@ library(hoopR)
 library(janitor)
 
 # Load tournament results data
-results <- read_csv("./data/Big_Dance_CSV.csv") %>%
+results <- read_csv("../../data/Big_Dance_CSV.csv") %>%
   filter(Year > 2006) %>%
   clean_names()
 
