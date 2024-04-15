@@ -28,7 +28,30 @@ kenpom_data <- kenpom_data %>%
 ```
 
 ```{r}
-seed_expectations <- c(`1`=4, `2`=4, `3`=3, `4`=3, `5`=2, `6`=2, `7`=2, `8`=2, `9`=1, `10`=1, `11`=1, `12`=1, `13`=0, `14`=0, `15`=0, `16`=0)
+seed_expectations <- c(
+  `1`=5,
+  `2`=4,    
+  `3`=4,    
+  `4`=3,    
+  `5`=3,
+  `6`=2,   
+  `7`=2,    
+  `8`=2,    
+  `9`=1,    
+  `10`=1,   
+  `11`=1,   
+  `12`=1,   
+  `13`=0,  
+  `14`=0,
+  `15`=0,   
+  `16`=0    
+)
+
+# 1 means  elite eight or better
+# 2 - 3 means sweet sixteen or better
+# 4 -8 means round of 32 or better
+# 9 - 12 means the team enter first round
+# 13 - 16 means typically lose in first round
 
 # Analyze upsets based on PATH difficulty
 heat_check <- heat_check %>%
@@ -42,6 +65,52 @@ ggplot(heat_check, aes(x=Upset, y=PATH, fill=Upset)) +
   theme_minimal()
 ```
 
+
+```{r}
+library(dplyr)
+library(caret)
+library(e1071)
+
+# Assuming the dataset 'heat_check' is already loaded
+# Clean and prepare the data
+features <- heat_check %>%
+  select(SEED, PATH, POWER, `POWER-PATH`, WINS, Upset) %>%
+  na.omit()  # Remove rows with NA values
+
+# Convert 'Upset' to a factor
+features$Upset <- as.factor(features$Upset)
+
+# Split the data into training and testing sets
+set.seed(123)  # for reproducibility
+training_indices <- createDataPartition(features$Upset, p=0.8, list=FALSE)
+training_data <- features[training_indices, ]
+testing_data <- features[-training_indices, ]
+
+
+```
+
+
+```{r}
+# Training the SVM model
+svm_model <- svm(Upset ~ ., data=training_data, type='C-classification', kernel='radial')
+
+# Print a summary to check model details
+summary(svm_model)
+
+```
+
+```{r}
+# Making predictions on the testing dataset
+predictions <- predict(svm_model, testing_data)
+
+# Creating a confusion matrix to evaluate the model
+confusionMatrix <- table(Predicted=predictions, Actual=testing_data$Upset)
+
+# Calculate accuracy
+accuracy <- sum(diag(confusionMatrix)) / sum(confusionMatrix)
+print(paste("Accuracy: ", accuracy))
+
+```
 
 
 
