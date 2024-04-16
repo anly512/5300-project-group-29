@@ -24,8 +24,7 @@ heat_check <- heat_check %>% rename(Season = YEAR)
 big_dance <- big_dance %>% rename(Season = Year)
 names(big_dance) <- str_replace(names(big_dance), "\\...\\d+$", "")
 tournament_matchups <- tournament_matchups %>% rename(Season = YEAR)
-kenpom_data <- kenpom_data %>%
-  select(-1)
+kenpom_data <- kenpom_data %>% select(-1)
 ```
 
 # Some EDA
@@ -37,16 +36,17 @@ summary(heat_check)
 
 ```{r}
 # Histogram of PATH difficulty
-ggplot(heat_check, aes(x=PATH)) +
+Path_difficulty <- ggplot(heat_check, aes(x=PATH)) +
   geom_histogram(binwidth=1, fill="blue", color="white") +
   labs(title="Histogram of PATH Difficulty", x="PATH Difficulty", y="Count")
-
+ggsave("../../plots/EDA/Histogram_of_PATH_Difficulty.png", plot = Path_difficulty, width = 4, height = 4, dpi = 300)
 # Boxplot of POWER by SEED
-ggplot(heat_check, aes(x=factor(SEED), y=POWER)) +
+Power_seed <- ggplot(heat_check, aes(x=factor(SEED), y=POWER)) +
   geom_boxplot() +
   labs(title="Boxplot of Team Power by Seed", x="Seed", y="Power")
-
+ggsave("../../plots/EDA/Boxplot_of_Team_Power_by_Seed.png", plot = Power_seed, width = 4, height = 4, dpi = 300)
 ```
+
 ```{r}
 # Correlation matrix of selected variables
 selected_variables <- heat_check %>% select(POWER, PATH, WINS, `POOL VALUE`)
@@ -57,14 +57,22 @@ print(correlation_matrix)
 library(corrplot)
 corrplot(correlation_matrix, method="circle")
 
+# Save the correlation matrix plot
+ggsave("../../plots/EDA/Correlation_Matrix_Plot.png", width = 4, height = 4, dpi = 300)
+
+
 ```
 ```{r}
 # Scatter plot of POWER vs. PATH
-ggplot(heat_check, aes(x=POWER, y=PATH)) +
+power_path_scatter <- ggplot(heat_check, aes(x=POWER, y=PATH)) +
   geom_point(aes(color=factor(SEED)), alpha=0.6) +
-  labs(title="Scatter Plot of POWER vs. PATH by SEED", x="POWER", y="PATH")+
-  geom_smooth(method="lm")
+  geom_smooth(method="lm") +
+  labs(title="Scatter Plot of POWER vs. PATH by SEED", x="POWER", y="PATH")
 
+print(power_path_scatter)
+
+# Save the scatter plot
+ggsave("../../plots/EDA/Scatter_Plot_of_POWER_vs_PATH.png", plot = power_path_scatter, width = 6, height = 4, dpi = 300)
 ```
 
 
@@ -112,33 +120,138 @@ ggplot(heat_check, aes(x=Upset, y=PATH, fill=Upset)) +
 
 ```{r}
 library(dplyr)
-library(e1071)  # Support for SVM
-library(caret)  # For data partitioning and preprocessing
+library(e1071)  
+library(caret)  
 
 
-# Check initial data structure
-str(heat_check)
 
-# Convert 'Upset' to a factor with the correct levels
+heat_check$Upset <- factor(heat_check$Upset, levels = c("No Upset", "Upset"))
+heat_check$Upset_numeric <- as.integer(heat_check$Upset) - 1
 
 
 # Handling missing values
-heat_check <- na.omit(heat_check)  # Remove rows with any NAs
+heat_check <- na.omit(heat_check)
 
-# Re-check the structure and balance of 'Upset'
-table(heat_check$Upset)
+# Selecting relevant features
+features <- heat_check %>% select(SEED, PATH, POWER, `POWER-PATH`, WINS, Upset_numeric)
 
-# Ensure there's a sufficient number of instances for each class
-if(any(table(heat_check$Upset) < 10)) {
-  stop("Not enough data points for each class in 'Upset'. Consider data collection or augmentation.")
-}
+# Seed for reproducibility and data partitioning
+set.seed(74)
+training_indices <- createDataPartition(features$Upset_numeric, p=0.8, list=FALSE)
+training_data <- features[training_indices, ]
+testing_data <- features[-training_indices, ]
 
-# Select relevant features and the target
-features <- heat_check %>%
-  select(SEED, PATH, POWER, `POWER-PATH`, WINS, Upset)
+# SVM Model Training
+svm_model <- svm(Upset_numeric ~ ., data=training_data, type='C-classification', kernel='radial')
+summary(svm_model)
+
+# Predicting and Evaluating the SVM Model
+predictions <- predict(svm_model, testing_data)
+predictions_factor <- factor(predictions, levels = c(0, 1))
+actual_factor <- factor(testing_data$Upset_numeric, levels = c(0, 1))
+confusionMatrix <- confusionMatrix(predictions_factor, actual_factor)
+print(confusionMatrix)
+
+accuracy <- confusionMatrix$overall['Accuracy']
+print(paste("Accuracy: ", accuracy))
+precision <- confusionMatrix$byClass['Precision']
+recall <- confusionMatrix$byClass['Recall']
+F1_score <- 2 * (precision * recall) / (precision + recall)
+print(paste("Precision: ", precision))
+print(paste("Recall: ", recall))
+print(paste("F1 Score: ", F1_score))
+
+```
+
+
+```{r}
+library(kernlab)
+
+svm_model_linear <- ksvm(Upset_numeric ~ ., data=training_data, kernel="vanilladot", type="C-svc")
+predictions_linear <- predict(svm_model_linear, testing_data)
+confusionMatrix_linear <- table(Predictions=predictions_linear, Actual=testing_data$Upset_numeric)
+print(confusionMatrix_linear)
+
+# Calculate accuracy for the linear model
+accuracy_linear <- sum(diag(confusionMatrix_linear)) / sum(confusionMatrix_linear)
+print(paste("Linear Model Accuracy: ", accuracy_linear))
+
+# Parameter tuning using caret's train function
+set.seed(123)
+tuned_results <- train(Upset_numeric ~ ., data=training_data, method="svmRadial",
+                        trControl=trainControl(method="cv", number=10),
+                        tuneLength=5)
+print(tuned_results)
+best_model <- tuned_results$finalModel
+
+predictions_linear <- predict(svm_model_linear, testing_data)
+predictions_linear_factor <- factor(predictions_linear, levels = c("0", "1"))
+
+# Actual data should also be a factor with the same levels
+actual_factor_linear <- factor(testing_data$Upset_numeric, levels = c("0", "1"))
+
+# Creating and printing the confusion matrix
+confusionMatrix_linear <- table(Predictions=predictions_linear_factor, Actual=actual_factor_linear)
+print(confusionMatrix_linear)
+
+# Calculating accuracy
+accuracy_linear <- sum(diag(confusionMatrix_linear)) / sum(confusionMatrix_linear)
+print(paste("Linear Model Accuracy: ", accuracy_linear))
+
+
+```
+
+```{r}
+library(ggplot2)
+
+# Assuming your SVM model and predictions are set
+svm_model_linear <- ksvm(Upset_numeric ~ ., data=training_data, kernel="vanilladot", type="C-svc")
+predictions_linear <- predict(svm_model_linear, testing_data)
+predictions_linear_factor <- factor(predictions_linear, levels = c("0", "1"))
+
+# Ensure the actual testing data labels are also factors with the same levels
+actual_factor_linear <- factor(testing_data$Upset_numeric, levels = c("0", "1"))
+
+# Create the confusion matrix
+confusionMatrix_linear <- table(Predictions = predictions_linear_factor, Actual = actual_factor_linear)
+print(confusionMatrix_linear)
+
+# Calculate and print accuracy
+accuracy_linear <- sum(diag(confusionMatrix_linear)) / sum(confusionMatrix_linear)
+print(paste("Linear Model Accuracy: ", accuracy_linear))
+
+# Visualization of the confusion matrix
+conf_matrix_df <- as.data.frame(confusionMatrix_linear)
+colnames(conf_matrix_df) <- c("Predictions", "Actual", "Freq")
+
+ggplot(data = conf_matrix_df, aes(x = Actual, y = Predictions, fill = Freq)) +
+    geom_tile(color = "white") +  # Use tiles to create the matrix
+    geom_text(aes(label = Freq), vjust = 1) +  # Add frequencies in the middle of tiles
+    scale_fill_gradient(low = "lightblue", high = "firebrick") +  # Color gradient from blue to red
+    labs(title = "Confusion Matrix Visualization", x = "Actual Labels", y = "Predicted Labels") +
+    theme_minimal()  # Minimal theme for clean presentation
 
 ```
 
 
 
+```{r}
+library(PRROC)
+pr_data <- pr.curve(scores.class0 = as.numeric(levels(predictions_linear_factor))[predictions_linear_factor], weights.class0 = as.numeric(actual_factor_linear) - 1, curve = TRUE)
+
+# Convert the matrix to a data frame for ggplot
+pr_df <- data.frame(
+  recall = pr_data$curve[, "recall"],
+  precision = pr_data$curve[, "precision"]
+)
+
+# Plot Precision-Recall Curve using ggplot
+library(ggplot2)
+ggplot(data = pr_df, aes(x = recall, y = precision)) +
+  geom_line(color = "green") +
+  geom_point(color = "darkgreen") +
+  labs(title = "Precision-Recall Curve for SVM Model", x = "Recall", y = "Precision") +
+  theme_minimal()
+
+```
 
