@@ -89,5 +89,5 @@ roc_plot <- ggplot(roc_df, aes(x = 1 - specificity, y = sensitivity)) +
   )+
   theme_bw()
 ggsave("../../plots/Models/ROC_Curve_SVM.png",
-       height = 8,
-       width = 16)
+       height = 4,
+       width = 4)
