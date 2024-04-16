@@ -4,92 +4,223 @@ format: html
 embed-resources: true
 ---
 
-```{python}
+```{r}
 
-import pandas as pd
+library(readr)
+library(tidyverse)
 
 # Load the data files
-regular_season_stats_file = "../../data/regular_season_stats_of_all_tournament_team_matchups_2007_2019.csv"
-tournament_index_file = "../../data/heat_check_tournament_index.csv"
+regular_season_stats <- read_csv("../../data/regular_season_stats_of_all_tournament_team_matchups_2007_2019.csv")
+tournament_index <- read_csv("../../data/heat_check_tournament_index.csv")
 
-# Read the datasets
-regular_season_stats = pd.read_csv(regular_season_stats_file)
-tournament_index = pd.read_csv(tournament_index_file)
-
-# Display the first few rows of each dataset
-regular_season_stats.head(), tournament_index.head()
+head(regular_season_stats)
+head(tournament_index)
 ```
 
 
-```{python}
+```{r}
+# Load necessary library
+library(stringr)  # For string operations
 
-# Check the unique team names and years in both datasets to understand the merging possibility
-unique_teams_regular = set(regular_season_stats['victor'].unique())
-unique_teams_tournament = set(tournament_index['TEAM'].unique())
+# Function to standardize team names
+standardize_team_names <- function(name) {
+  suffixes <- c(" State", " St", "ate", " University", "College", " of")
+  for (suffix in suffixes) {
+    name <- str_replace_all(name, suffix, "")
+  }
+  return(str_trim(name))
+}
+regular_season_stats$victor <- sapply(regular_season_stats$victor, standardize_team_names)
+tournament_index$TEAM <- sapply(tournament_index$TEAM, standardize_team_names)
 
-# Display unique team names in both datasets
-unique_teams_regular, unique_teams_tournament
-```
 
+regular_season_stats_filtered <- filter(regular_season_stats, season %in% 2013:2019)
+tournament_index_filtered <- filter(tournament_index, YEAR %in% 2013:2019)
+merged_data <- merge(regular_season_stats_filtered, tournament_index_filtered, 
+                     by.x = c("victor", "season"), by.y = c("TEAM", "YEAR"), all = TRUE)
 
-```{python}
-def standardize_team_names(name):
-    # Common suffixes and variations that need to be standardized
-    suffixes = [' State', ' St', 'ate', ' University', 'College', ' of']
-    for suffix in suffixes:
-        name = name.replace(suffix, '')
-    return name.strip()
+head(merged_data)
 
-# Apply standardization function to team names in both datasets
-regular_season_stats['victor'] = regular_season_stats['victor'].apply(standardize_team_names)
-tournament_index['TEAM'] = tournament_index['TEAM'].apply(standardize_team_names)
-
-# Check the unique team names again after standardization
-unique_teams_regular_post = set(regular_season_stats['victor'].unique())
-unique_teams_tournament_post = set(tournament_index['TEAM'].unique())
-
-unique_teams_regular_post, unique_teams_tournament_post
 
 
 ```
 
-
-```{python}
-# Check the year range in both datasets
-regular_season_years = regular_season_stats['season'].unique()
-tournament_index_years = tournament_index['YEAR'].unique()
-
-regular_season_years, tournament_index_years
-
-
-# Filter datasets for overlapping years
-regular_season_stats_filtered = regular_season_stats[regular_season_stats['season'].isin(tournament_index_years)]
-tournament_index_filtered = tournament_index[tournament_index['YEAR'].isin(regular_season_years)]
-
-# Merge datasets on team names and years
-merged_data = pd.merge(regular_season_stats_filtered, tournament_index_filtered, 
-                       left_on=['victor', 'season'], right_on=['TEAM', 'YEAR'], how='inner')
-
-# Display the merged data to ensure it looks correct
-merged_data.head()
+```{r}
+sum(is.na(merged_data))
+colSums(is.na(merged_data))
+merged_data <- drop_na(merged_data)
 ```
 
+```{r}
 
-```{python}
+library(ggplot2)  
+
+ggplot(merged_data, aes(x = victor_avg_score)) +
+  geom_histogram(bins = 30, fill = "blue", color = "black") +
+  ggtitle("Distribution of Victor Average Score") +
+  xlab("Average Score") +
+  ylab("Frequency")
 
 
-import numpy as np
+merged_data$is_upset <- with(merged_data, SEED > loser_seed)
 
-# Simulating the loser seed (for demonstration purposes, real analysis requires actual data)
-np.random.seed(42)
-merged_data['loser_seed'] = np.random.randint(1, 17, size=len(merged_data))
+merged_data$is_bad_loss <- with(merged_data, abs(SEED - loser_seed) >= 5)
 
-# Define bad losses as where the seed difference between the victor and loser is 5 or more
-merged_data['is_bad_loss'] = (merged_data['SEED'] - merged_data['loser_seed']).abs() >= 5
+merged_data$is_upset <- with(merged_data, SEED > loser_seed)
 
-# Visualization: Count of bad losses for upset and non-upset games
-bad_losses_count = merged_data.groupby('is_bad_loss').size()
+ggplot(merged_data, aes(x = factor(is_bad_loss), fill = factor(is_upset))) +
+  geom_bar(position = "dodge") +
+  labs(title = "Count of Bad Losses by Upset Status",
+       x = "Is Bad Loss",
+       y = "Count",
+       fill = "Is Upset")
+```
+```{r}
 
-bad_losses_count
+scatter_plot <- ggplot(merged_data, aes(x = victor_avg_score, y = SEED)) +
+  geom_point(aes(color = factor(is_upset)), alpha = 0.6) +
+  geom_smooth(method = "lm", color = "blue", se = FALSE) +
+  labs(title = "Pre-conference Average Score vs. Tournament Seed",
+       x = "Pre-conference Average Score",
+       y = "Tournament Seed",
+       color = "Is Upset") +
+  theme(aspect.ratio = 1)
+
+# Save the plot
+ggsave("../../plots/EDA/preconf_vs_seed.png", plot = scatter_plot, width = 5, height = 5, dpi = 300)
+
+```
+
+```{r}
+
+box_plot <- ggplot(merged_data, aes(x = factor(is_upset), y = victory_margin, fill = factor(is_upset))) +
+  geom_boxplot() +
+  labs(title = "Victory Margins by Upset Status",
+       x = "Is Upset",
+       y = "Victory Margin",
+       fill = "Upset Status") +
+  theme(aspect.ratio = 1)
+
+
+ggsave("../../plots/EDA/victory_margins.png", plot = box_plot, width = 5, height = 5, dpi = 300)
+
+
+```
+
+```{r}
+
+histogram_plot <- ggplot(merged_data, aes(x = victor_avg_fgp)) +
+  geom_histogram(bins = 30, fill = "green", color = "black") +
+  facet_wrap(~factor(is_upset)) +
+  labs(title = "Victor Field Goal Percentages by Upset Status",
+       x = "Victor Average Field Goal Percentage",
+       y = "Frequency") +
+  theme(aspect.ratio = 1)
+
+# Save the plot
+ggsave("../../plots/EDA/fg_percentages.png", plot = histogram_plot, width = 5, height = 5, dpi = 300)
+
+
+```
+
+```{r}
+
+density_plot <- ggplot(merged_data, aes(x = victor_avg_score, fill = factor(is_upset))) +
+  geom_density(alpha = 0.5) +
+  labs(title = "Density of Scores for Upset vs. Non-Upset Games",
+       x = "Victor Average Score",
+       y = "Density",
+       fill = "Is Upset") +
+  theme(aspect.ratio = 1)
+
+# Save the plot
+ggsave("../../plots/EDA/score_density.png", plot = density_plot, width = 5, height = 5, dpi = 300)
+
+```
+
+```{r}
+
+selected_features <- merged_data %>%
+  select(SEED, loser_seed, victor_avg_score, victor_avg_fgp, victor_avg_fta, victory_margin, upset)
+
+
+numeric_columns <- names(selected_features)[sapply(selected_features, is.numeric) & names(selected_features) != "upset"]
+
+# Scaling the numeric features
+preProcess_range_model <- preProcess(selected_features[numeric_columns], method = c("center", "scale"))
+scaled_features <- predict(preProcess_range_model, selected_features[numeric_columns])
+
+
+scaled_features <- data.frame(scaled_features, upset = selected_features$upset)
+
+set.seed(123)
+training_rows <- createDataPartition(scaled_features$upset, p = 0.8, list = FALSE)
+train_data <- scaled_features[training_rows, ]
+test_data <- scaled_features[-training_rows, ]
+
+train_data$upset <- as.factor(train_data$upset)
+test_data$upset <- as.factor(test_data$upset)
+
+
+
+```
+
+```{r}
+library(caret)
+library(e1071)
+svm_model <- svm(upset ~ ., data = train_data, kernel = "radial", cost = 1, gamma = 0.5)
+print(svm_model)
+predictions <- predict(svm_model, test_data)
+conf_mat <- confusionMatrix(predictions, test_data$upset)
+print(conf_mat)
+
+
+```
+
+```{r}
+# Define ranges for the grid search
+tune_result <- tune(
+  svm, 
+  train.x = upset ~ ., 
+  data = train_data,
+  kernel = "radial",
+  ranges = list(cost = 10^(-1:2), gamma = c(0.01, 0.05, 0.1, 0.5))
+)
+
+# Best parameters found
+print(tune_result$best.parameters)
+
+
+best_svm <- svm(upset ~ ., data = train_data, kernel = "radial", cost = tune_result$best.parameters$cost, gamma = tune_result$best.parameters$gamma)
+```
+
+```{r}
+# Perform cross-validation
+cv_results <- svm(upset ~ ., data = train_data, kernel = "radial", cost = tune_result$best.parameters$cost, gamma = tune_result$best.parameters$gamma, cross = 10)
+print(cv_results)
+
+```
+
+```{r}
+# Predict and evaluate using confusionMatrix from caret
+predictions <- predict(best_svm, test_data)
+conf_mat <- confusionMatrix(predictions, test_data$upset)
+print(conf_mat)
+
+```
+
+```{r}
+
+library(caret)
+library(corrplot)
+
+
+conf_matrix <- confusionMatrix(as.factor(predictions), test_data$upset)
+print(conf_matrix$table)
+
+
+corrplot(conf_matrix$table, is.corr = FALSE, method = "color", cl.lim = c(0, max(conf_matrix$table)), type = "upper", tl.col = "black", tl.srt = 45, addCoef.col = "black", title = "Confusion Matrix", mar = c(0,0,1,0))
+
+
 ```
 
