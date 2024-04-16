@@ -100,11 +100,16 @@ print(paste("Training Accuracy",logit_train_acc))
 print(paste("Validation Accuracy",logit_val_acc))
 print(paste("Testing Accuracy",logit_test_acc))
 
+# Calculate True Positives (TP) and False Positives (FP)
+TP <- sum(logit_test_pred == 1 & test$upset == 1)
+FP <- sum(logit_test_pred == 1 & test$upset == 0)
+precision <- TP / (TP + FP)
+
 # Nicer plot of ROC
 roc_df <- coords(logit_roc, 'best', transpose = T)
 roc_df <- data.frame(threshold = c(0, 0.5, 1),
-                     specificity = nnet_roc$specificities,
-                     sensitivity = nnet_roc$sensitivities)
+                     specificity = logit_roc$specificities,
+                     sensitivity = logit_roc$sensitivities)
 roc_df
 ggplot(roc_df, aes(x = 1 - specificity, y = sensitivity)) +
   geom_line() +
@@ -115,8 +120,8 @@ ggplot(roc_df, aes(x = 1 - specificity, y = sensitivity)) +
        caption = "Data source: hoopR") +
   theme_bw()
 ggsave("../../plots/Models/ROC_Curve_logit.png",
-       height = 8,
-       width = 16)
+       height = 4,
+       width = 4)
 
 ### Neural Networks ###
 # Non predictors (these change since nnet wants a numeric output in the formula instead of character)
@@ -163,10 +168,11 @@ print(paste("Testing Accuracy",nnet_test_acc))
 # Calculate True Positives (TP) and False Positives (FP)
 TP <- sum(nnet_test_pred == 1 & test$upset == 1)
 FP <- sum(nnet_test_pred == 1 & test$upset == 0)
+precision <- TP / (TP + FP)
 
 # ROC and AUC
-nnet_roc <- roc(nnet_pred$pred_class, logit_pred$pred_class, levels = c(0,1))
-nnet_auc <- auc(nnet_pred$pred_class, logit_pred$pred_class, levels = c(0,1))
+nnet_roc <- roc(nnet_pred$pred_class, nnet_test_pred$pred_class, levels = c(0,1))
+nnet_auc <- auc(nnet_pred$pred_class, nnet_test_pred$pred_class, levels = c(0,1))
 plot.roc(nnet_roc)
 
 # Nicer plot of ROC
@@ -184,5 +190,6 @@ ggplot(roc_df, aes(x = 1 - specificity, y = sensitivity)) +
        caption = "Data source: hoopR") +
   theme_bw()
 ggsave("../../plots/Models/ROC_Curve_nnet.png",
-       height = 8,
-       width = 16)
+       height = 4,
+       width = 4)
+
