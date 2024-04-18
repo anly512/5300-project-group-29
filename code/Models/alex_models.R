@@ -145,7 +145,7 @@ preds <- colnames(train)[!colnames(train) %in% nonpreds]
 preds <- preds[!startsWith(preds, "season")]
 
 # Fit Neural Network
-model_nnet <- nnet(upset ~ ., data = train[preds], size = 16, decay = 0.1)
+model_nnet <- nnet(factor(upset) ~ ., data = train[preds], size = 16, decay = 0.1)
 #print("Optimal Weights:")
 #print(model_nnet$wts)
 # Predictions

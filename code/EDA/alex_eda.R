@@ -93,7 +93,7 @@ tourney_all_stats <- winner_stats %>%
             by = c(colnames(results), "victor_seed", "loser_seed")) %>%
   left_join(season_summaries,
             by = "season")
-tourney_all_stats %>% write_csv("./data/regular_season_stats_of_all_tournament_team_matchups_2007_2019.csv")
+tourney_all_stats %>% write_csv("../../data/regular_season_stats_of_all_tournament_team_matchups_2007_2019.csv")
 rm(winner_stats, loser_stats, team_summaries_merge)
 
 ### UPSET ANALYSIS ###
@@ -143,13 +143,13 @@ tourney_stats %>%
   geom_line() +
   labs(x = "Season", 
        y = "Average Regular Season Point Total",
-       title = "Average Regular Season Point Totals by Upset Victors and Losers (2007-2019)",
+       title = "Average Regular Season Point Totals \nby Upset Victors and Losers (2007-2019)",
        color = element_blank()) +
   scale_x_continuous(breaks = 2007:2019) +
   theme_bw()
-ggsave("./plots/EDA/upset_score_by_season.png",
-       height = 8,
-       width = 16)
+ggsave("../../plots/EDA/upset_score_by_season.png",
+       height = 4,
+       width = 7)
 
 # Plot average regular season points of winners and losers of upsets by seed
 tourney_stats %>%
@@ -170,9 +170,9 @@ tourney_stats %>%
        size = "Number of Upsets") +
   scale_y_continuous(expand = c(0,1)) +
   theme_bw()
-ggsave("./plots/EDA/upset_score_by_seed.png",
-       height = 8,
-       width = 16)
+ggsave("../../plots/EDA/upset_score_by_seed.png",
+       height = 4,
+       width = 4)
 
 # Plot ten most surprising upsets by regular season scoring
 tourney_stats %>%
@@ -192,9 +192,9 @@ tourney_stats %>%
   theme_bw() +
   theme(axis.text.x = element_text(size = 10),
         legend.position = "none")
-ggsave("./plots/EDA/top10_surprising_upsets.png",
+ggsave("../../plots/EDA/top10_surprising_upsets.png",
        height = 8,
-       width = 16)
+       width = 12)
   
   
   
