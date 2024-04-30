@@ -11,6 +11,8 @@ library(glmnet)
 library(gam)
 library(caret)
 library(pROC)
+library(car)
+library(kableExtra)
 
 # Contains regular season average stats for the winners and losers of all matchups in the NCAA tournament (2007-2019)
 df <- read_csv("../../data/regular_season_stats_of_all_tournament_team_matchups_2007_2019.csv") %>%
@@ -78,6 +80,17 @@ rm(specs)
 #model_logit <- glm(factor(upset) ~ ., data = train[preds], family = "binomial")
 summary(model_logit)
 
+# Check for multicollinearity
+logit_vif <- vif(model_logit$finalModel) %>%
+  data.frame()
+logit_vif$variable <- rownames(logit_vif)
+colnames(logit_vif) <- c("VIF", "variable")
+# Convert to HTML table
+logit_vif %>% 
+  kbl() %>%
+  kable_styling()
+# No indication of significant multicollinearity in  the predictors
+
 # Predictions
 logit_train_pred <- predict(model_logit, newdata = train[preds], type = "prob")
 logit_val_pred <- predict(model_logit, newdata = val[preds], type = "prob")
@@ -87,8 +100,8 @@ logit_test_pred$pred_class <- ifelse(logit_test_pred$upset > 0.5, 1, 0)
 logit_val_pred$pred_class <- ifelse(logit_val_pred$upset > 0.5, 1, 0)
 
 # ROC and AUC
-logit_roc <- roc(ifelse(test$upset_char == "upset", 1, 0), logit_pred$pred_class, levels = c(0,1))
-logit_auc <- auc(ifelse(test$upset_char == "upset", 1, 0), logit_pred$pred_class, levels = c(0,1))
+logit_roc <- roc(ifelse(test$upset_char == "upset", 1, 0), logit_test_pred$pred_class, levels = c(0,1))
+logit_auc <- auc(ifelse(test$upset_char == "upset", 1, 0), logit_test_pred$pred_class, levels = c(0,1))
 plot.roc(logit_roc)
 
 # Get accuracy
