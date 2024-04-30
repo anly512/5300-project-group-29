@@ -81,41 +81,38 @@ ggsave("../../plots/EDA/Scatter_Plot_of_POWER_vs_PATH.png", plot = power_path_sc
 
 
 ```{r}
-seed_expectations <- c(
-  `1`=5,
-  `2`=4,    
-  `3`=4,    
-  `4`=3,    
-  `5`=3,
-  `6`=2,   
-  `7`=2,    
-  `8`=2,    
-  `9`=1,    
-  `10`=1,   
-  `11`=1,   
-  `12`=1,   
-  `13`=0,  
-  `14`=0,
-  `15`=0,   
-  `16`=0    
-)
 
+# Seed expectations map
+seed_expectations <- c(
+  `1`=5, `2`=4, `3`=4, `4`=3, `5`=3,
+  `6`=2, `7`=2, `8`=2, `9`=1, `10`=1,
+  `11`=1, `12`=1, `13`=0, `14`=0, `15`=0, `16`=0
+)
 # 1 means  elite eight or better
 # 2 - 3 means sweet sixteen or better
 # 4 -8 means round of 32 or better
 # 9 - 12 means the team enter first round
 # 13 - 16 means typically lose in first round
 
+
 # Analyze upsets based on PATH difficulty
 heat_check <- heat_check %>%
-  mutate(Upset = ROUND > seed_expectations[as.character(SEED)]) %>%
-  mutate(Upset = ifelse(Upset, "Upset", "No Upset"))
+  mutate(Upset = ROUND > seed_expectations[as.character(SEED)],
+         Upset = ifelse(Upset, "Upset", "No Upset"))
 
-# Visualizing the distribution of PATH difficulty for Upsets
-ggplot(heat_check, aes(x=Upset, y=PATH, fill=Upset)) +
+# Assigning the violin plot to a variable
+violin_plot <- ggplot(heat_check, aes(x=Upset, y=PATH, fill=Upset)) +
   geom_violin(trim=FALSE) +
   labs(title="Distribution of Path Difficulty Based on Upset Status", x="Upset Status", y="Path Difficulty") +
   theme_minimal()
+
+# Display the plot
+print(violin_plot)
+
+# Save the plot
+ggsave("../../plots/EDA/Distribution_of_Path_Difficulty_Based_on_Upset_Status.png", plot = violin_plot, width = 6, height = 4, dpi = 300)
+
+
 ```
 
 ```{r}
@@ -224,13 +221,13 @@ print(paste("Linear Model Accuracy: ", accuracy_linear))
 conf_matrix_df <- as.data.frame(confusionMatrix_linear)
 colnames(conf_matrix_df) <- c("Predictions", "Actual", "Freq")
 
-ggplot(data = conf_matrix_df, aes(x = Actual, y = Predictions, fill = Freq)) +
+cm_svm <- ggplot(data = conf_matrix_df, aes(x = Actual, y = Predictions, fill = Freq)) +
     geom_tile(color = "white") +  # Use tiles to create the matrix
     geom_text(aes(label = Freq), vjust = 1) +  # Add frequencies in the middle of tiles
     scale_fill_gradient(low = "lightblue", high = "firebrick") +  # Color gradient from blue to red
     labs(title = "Confusion Matrix Visualization", x = "Actual Labels", y = "Predicted Labels") +
     theme_minimal()  # Minimal theme for clean presentation
-
+ggsave("../../plots/EDA/confusion_matrix_svm.png", plot = cm_svm, width = 4, height = 4, dpi = 300)
 ```
 
 
